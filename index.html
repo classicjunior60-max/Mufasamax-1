@@ -1,4 +1,63 @@
-import { useState, useEffect, useRef } from "react";
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#1E3A8A" />
+<title>Booklet - exam prep for university students</title>
+<style>html,body,#root{margin:0;min-height:100%}</style>
+<script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- SETTINGS: paste your Cloudflare Worker URL between the quotes (see worker.js).
+     Leave it empty and the AI features (marking, tutor, cram) will not work. -->
+<script>
+  window.BOOKLET_API_PROXY = "";
+</script>
+
+<!-- Storage + AI proxy helpers -->
+<script>
+  (function () {
+    if (!window.storage) {
+      var ls = null;
+      try { ls = window.localStorage; } catch (e) {}
+      var mem = {};
+      var read = function (k) { return ls ? ls.getItem(k) : (k in mem ? mem[k] : null); };
+      var write = function (k, v) { if (ls) ls.setItem(k, v); else mem[k] = v; };
+      var remove = function (k) { if (ls) ls.removeItem(k); else delete mem[k]; };
+      var keys = function () { return ls ? Object.keys(ls) : Object.keys(mem); };
+      window.storage = {
+        get: async function (key, shared) {
+          var value = read(key);
+          if (value === null) throw new Error("Key not found: " + key);
+          return { key: key, value: value, shared: !!shared };
+        },
+        set: async function (key, value, shared) { write(key, value); return { key: key, value: value, shared: !!shared }; },
+        delete: async function (key, shared) { remove(key); return { key: key, deleted: true, shared: !!shared }; },
+        list: async function (prefix, shared) {
+          prefix = prefix || "";
+          return { keys: keys().filter(function (k) { return k.indexOf(prefix) === 0; }), prefix: prefix, shared: !!shared };
+        }
+      };
+    }
+    var PROXY = window.BOOKLET_API_PROXY;
+    if (PROXY) {
+      var originalFetch = window.fetch.bind(window);
+      window.fetch = function (input, init) {
+        var url = typeof input === "string" ? input : input.url;
+        if (url && url.indexOf("https://api.anthropic.com/") === 0) return originalFetch(PROXY, init);
+        return originalFetch(input, init);
+      };
+    }
+  })();
+</script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef } = React;
 
 /* ---------- config ---------- */
 const FREE_USES = 5;
@@ -499,7 +558,7 @@ function Cram({ course, canUse, consume }) {
 }
 
 /* ---------- app ---------- */
-export default function Booklet() {
+function Booklet() {
   const [data, setData] = useState({ used: 0, unlocked: false, courses: [], qs: {} });
   const [loaded, setLoaded] = useState(false);
   const [courseId, setCourseId] = useState(null);
@@ -707,3 +766,9 @@ export default function Booklet() {
     </div>
   );
 }
+
+
+ReactDOM.createRoot(document.getElementById("root")).render(<Booklet />);
+</script>
+</body>
+</html>
